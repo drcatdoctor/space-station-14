@@ -124,17 +124,17 @@ namespace Content.Client.Atmos.Monitor.UI
                     }
 
                     break;
-                case GasVentScrubberData scrubber:
+                case GasVentScrubberData data:
                     if (!_scrubbers.TryGetValue(addr, out var scrubberControl))
                     {
-                        var control = new ScrubberControl(scrubber, addr);
+                        var control = new ScrubberControl(data, addr);
                         control.ScrubberDataChanged += AtmosDeviceDataChanged!.Invoke;
                         _scrubbers.Add(addr, control);
                         CScrubberContainer.AddChild(control);
                     }
                     else
                     {
-                        scrubberControl.ChangeData(scrubber);
+                        scrubberControl.Data = data;
                     }
 
                     break;

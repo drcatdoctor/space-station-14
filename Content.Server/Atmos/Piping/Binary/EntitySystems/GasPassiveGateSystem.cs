@@ -35,20 +35,17 @@ namespace Content.Server.Atmos.Piping.Binary.EntitySystems
             var outputStartingPressure = outlet.Air.Pressure;
             var inputStartingPressure = inlet.Air.Pressure;
 
-            if (outputStartingPressure >= MathF.Min(gate.TargetPressure, inputStartingPressure - gate.FrictionPressureDifference))
-                return; // No need to pump gas, target reached or input pressure too low.
+            if (inputStartingPressure < gate.TargetPressure ||
+                inputStartingPressure - outputStartingPressure < gate.FrictionPressureDifference)
+                return;
 
-            if (inlet.Air.TotalMoles > 0 && inlet.Air.Temperature > 0)
-            {
-                // We calculate the necessary moles to transfer using our good ol' friend PV=nRT.
-                var pressureDelta = MathF.Min(gate.TargetPressure - outputStartingPressure, (inputStartingPressure - outputStartingPressure)/2);
-                // We can't have a pressure delta that would cause outlet pressure > inlet pressure.
+            // Input Pressure would be 0 if there's no moles so let's not check for moles
 
-                var transferMoles = pressureDelta * outlet.Air.Volume / (inlet.Air.Temperature * Atmospherics.R);
+            // We calculate the differences in moles using our good ol' friend PV=nRT.
+            var deltaMoles = (inputStartingPressure - outputStartingPressure) * outlet.Air.Volume / (inlet.Air.Temperature * Atmospherics.R);
 
-                // Actually transfer the gas.
-                _atmosphereSystem.Merge(outlet.Air, inlet.Air.Remove(transferMoles));
-            }
+            // Transfer half to equalize the two sides.
+            _atmosphereSystem.Merge(outlet.Air, inlet.Air.Remove(deltaMoles/2));
         }
     }
 }

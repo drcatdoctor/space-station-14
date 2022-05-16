@@ -42,9 +42,9 @@ air-alarm-ui-vent-internal-bound-label = Internal bound
 
 ### Scrubbers
 
-air-alarm-ui-scrubber-pump-direction-label = Direction
-air-alarm-ui-scrubber-volume-rate-label = Rate (L)
-air-alarm-ui-scrubber-wide-net-label = WideNet
+air-alarm-ui-scrubber-mode-label = Mode
+air-alarm-ui-scrubber-transfer-rate-label = Rate (L/s)
+air-alarm-ui-scrubber-target-pressure-label = Target Pressure (kPa)
 
 ### Thresholds
 

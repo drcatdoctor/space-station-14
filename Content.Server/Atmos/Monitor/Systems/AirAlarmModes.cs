@@ -1,5 +1,6 @@
 using Content.Server.Atmos.Monitor.Components;
 using Content.Server.Atmos.Monitor.Systems;
+using Content.Server.Atmos.Piping.Unary.Components;
 using Content.Server.DeviceNetwork.Systems;
 using Content.Shared.Atmos;
 using Content.Shared.Atmos.Monitor.Components;
@@ -121,7 +122,7 @@ namespace Content.Server.Atmos.Monitor
                         AirAlarmSystem.SetData(uid, addr, GasVentPumpData.FilterModePreset);
                         break;
                     case GasVentScrubberData scrubberData:
-                        AirAlarmSystem.SetData(uid, addr, GasVentScrubberData.FilterModePreset);
+                        AirAlarmSystem.SetData(uid, addr, GasVentScrubberComponent.ScrubbingModePreset);
                         break;
                 }
             }
@@ -143,7 +144,7 @@ namespace Content.Server.Atmos.Monitor
                         AirAlarmSystem.SetData(uid, addr, GasVentPumpData.PanicModePreset);
                         break;
                     case GasVentScrubberData scrubberData:
-                        AirAlarmSystem.SetData(uid, addr, GasVentScrubberData.PanicModePreset);
+                        AirAlarmSystem.SetData(uid, addr, GasVentScrubberComponent.SiphonModePreset);
                         break;
                 }
             }
@@ -165,7 +166,7 @@ namespace Content.Server.Atmos.Monitor
                         AirAlarmSystem.SetData(uid, addr, GasVentPumpData.FillModePreset);
                         break;
                     case GasVentScrubberData scrubberData:
-                        AirAlarmSystem.SetData(uid, addr, GasVentScrubberData.FillModePreset);
+                        AirAlarmSystem.SetData(uid, addr, GasVentScrubberComponent.ScrubbingModePreset);
                         break;
                 }
             }
@@ -225,7 +226,7 @@ namespace Content.Server.Atmos.Monitor
                         AirAlarmSystem.SetData(uid, addr, pumpData);
                         break;
                     case GasVentScrubberData scrubberData:
-                        scrubberData = GasVentScrubberData.PanicModePreset;
+                        scrubberData = GasVentScrubberComponent.SiphonModePreset;
                         scrubberData.IgnoreAlarms = true;
                         AirAlarmSystem.SetData(uid, addr, scrubberData);
                         break;

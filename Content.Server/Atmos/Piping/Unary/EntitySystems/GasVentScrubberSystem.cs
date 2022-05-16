@@ -1,5 +1,4 @@
 using Content.Server.Atmos.EntitySystems;
-using Content.Server.Atmos.Monitor.Components;
 using Content.Server.Atmos.Monitor.Systems;
 using Content.Server.Atmos.Piping.Components;
 using Content.Server.Atmos.Piping.Unary.Components;
@@ -9,7 +8,6 @@ using Content.Server.DeviceNetwork.Systems;
 using Content.Server.NodeContainer;
 using Content.Server.NodeContainer.Nodes;
 using Content.Server.Power.Components;
-using Content.Shared.Atmos;
 using Content.Shared.Atmos.Piping.Unary.Visuals;
 using Content.Shared.Atmos.Monitor;
 using Content.Shared.Atmos.Piping.Unary.Components;
@@ -25,7 +23,11 @@ namespace Content.Server.Atmos.Piping.Unary.EntitySystems
         [Dependency] private readonly IGameTiming _gameTiming = default!;
         [Dependency] private readonly AtmosphereSystem _atmosphereSystem = default!;
         [Dependency] private readonly DeviceNetworkSystem _deviceNetSystem = default!;
-        [Dependency] private readonly SharedAmbientSoundSystem _ambientSoundSystem = default!;
+
+        private const float ScrubbingVolume = -12f;
+        private const float ScrubbingSoundRange = 5;
+        private const float SiphoningVolume = 12f;
+        private const float SiphoningSoundRange = 15;
 
         public override void Initialize()
         {
@@ -46,30 +48,26 @@ namespace Content.Server.Atmos.Piping.Unary.EntitySystems
                 return;
             }
 
-            if (!TryComp(uid, out AtmosDeviceComponent? device))
-                return;
-
-            var timeDelta = (float) (_gameTiming.CurTime - device.LastProcess).TotalSeconds;
-
             if (!scrubber.Enabled
-            || !EntityManager.TryGetComponent(uid, out NodeContainerComponent? nodeContainer)
-            || !nodeContainer.TryGetNode(scrubber.OutletName, out PipeNode? outlet))
+                || !TryComp(uid, out AtmosDeviceComponent? device)
+                || !TryComp(uid, out NodeContainerComponent? nodeContainer)
+                || !nodeContainer.TryGetNode(scrubber.OutletName, out PipeNode? outlet)
+                )
             {
                 return;
             }
 
             var xform = Transform(uid);
             var environment = _atmosphereSystem.GetTileMixture(xform.Coordinates, true);
-
-            Scrub(timeDelta, scrubber, environment, outlet);
-
-            if (!scrubber.WideNet) return;
-
-            // Scrub adjacent tiles too.
-            foreach (var adjacent in _atmosphereSystem.GetAdjacentTileMixtures(xform.Coordinates, false, true))
+            if (environment == null)
             {
-                Scrub(timeDelta, scrubber, adjacent, outlet);
+                return;
             }
+
+            var timeDelta = (float) (_gameTiming.CurTime - device.LastProcess).TotalSeconds;
+
+            var needsUpdate = Scrub(timeDelta, scrubber, environment, outlet);
+            if (needsUpdate) UpdateState(uid, scrubber);
         }
 
         private void OnVentScrubberLeaveAtmosphere(EntityUid uid, GasVentScrubberComponent component,
@@ -78,44 +76,70 @@ namespace Content.Server.Atmos.Piping.Unary.EntitySystems
         private void OnVentScrubberEnterAtmosphere(EntityUid uid, GasVentScrubberComponent component,
             AtmosDeviceEnabledEvent args) => UpdateState(uid, component);
 
-        private void Scrub(float timeDelta, GasVentScrubberComponent scrubber, GasMixture? tile, PipeNode outlet)
+        /**
+         * <returns>True if scrubber state is dirty (requires UpdateState).</returns>
+         */
+        private bool Scrub(float timeDelta, GasVentScrubberComponent scrubber, GasMixture tile, PipeNode outlet)
         {
-            // Cannot scrub if tile is null or air-blocked.
-            if (tile == null
-                || outlet.Air.Pressure >= 50 * Atmospherics.OneAtmosphere) // Cannot scrub if pressure too high.
+            if (tile.Pressure >= GasVentScrubberComponent.CrumplePressure)
             {
-                return;
+                scrubber.Welded = true;
+                return true;
             }
 
+            var needsUpdate = false;
+
+            // auto-siphon at high rates
+            // TODO make this make a loud CHUNK noise as the vent snaps open
+            if (tile.Pressure >= (scrubber.TargetPressure * 1.1f))
+            {
+                if (scrubber.ActualMode != ScrubberMode.Siphoning)
+                {
+                    scrubber.ActualMode = ScrubberMode.Siphoning;
+                    needsUpdate = true;
+                }
+            }
+            else
+            {
+                if (scrubber.ActualMode != scrubber.TargetMode)
+                {
+                    scrubber.ActualMode = scrubber.TargetMode;
+                    needsUpdate = true;
+                }
+            }
+
+            // don't check pressure until here, so the ActualMode updates correctly in Bad Situations
+            if (outlet.Air.Pressure >= scrubber.MaxOutPressure)
+            {
+                return needsUpdate;
+            }
+
+            float transferRate = scrubber.ActualMode == ScrubberMode.Siphoning
+                ? scrubber.MaxTransferRate
+                : scrubber.TransferRate;
+
             // Take a gas sample.
-            var ratio = MathF.Min(1f, timeDelta * scrubber.TransferRate / tile.Volume);
+            var ratio = MathF.Min(1f, timeDelta * transferRate / tile.Volume);
             var removed = tile.RemoveRatio(ratio);
 
             // Nothing left to remove from the tile.
             if (MathHelper.CloseToPercent(removed.TotalMoles, 0f))
-                return;
+                return needsUpdate;
 
-            if (scrubber.PumpDirection == ScrubberPumpDirection.Scrubbing)
-            {
-                _atmosphereSystem.ScrubInto(removed, outlet.Air, scrubber.FilterGases);
-
-                // Remix the gases.
-                _atmosphereSystem.Merge(tile, removed);
-            }
-            else if (scrubber.PumpDirection == ScrubberPumpDirection.Siphoning)
-            {
-                _atmosphereSystem.Merge(outlet.Air, removed);
-            }
+            _atmosphereSystem.Merge(outlet.Air, removed);
+            return needsUpdate;
         }
 
         private void OnAtmosAlarm(EntityUid uid, GasVentScrubberComponent component, AtmosMonitorAlarmEvent args)
         {
             if (args.HighestNetworkType == AtmosMonitorAlarmType.Danger)
             {
-                component.Enabled = false;
+                component.TargetMode = ScrubberMode.Siphoning;
+                component.Enabled = true;
             }
             else if (args.HighestNetworkType == AtmosMonitorAlarmType.Normal)
             {
+                component.TargetMode = ScrubberMode.Scrubbing;
                 component.Enabled = true;
             }
 
@@ -131,7 +155,6 @@ namespace Content.Server.Atmos.Piping.Unary.EntitySystems
         private void OnPacketRecv(EntityUid uid, GasVentScrubberComponent component, DeviceNetworkPacketEvent args)
         {
             if (!EntityManager.TryGetComponent(uid, out DeviceNetworkComponent netConn)
-                || !EntityManager.TryGetComponent(uid, out AtmosAlarmableComponent alarmable)
                 || !args.Data.TryGetValue(DeviceNetworkConstants.Command, out var cmd))
                 return;
 
@@ -150,9 +173,8 @@ namespace Content.Server.Atmos.Piping.Unary.EntitySystems
                     if (!args.Data.TryGetValue(AirAlarmSystem.AirAlarmSetData, out GasVentScrubberData? setData))
                         break;
 
-                    component.FromAirAlarmData(setData);
+                    component.FromAirAlarmData(setData.Value);
                     UpdateState(uid, component);
-                    alarmable.IgnoreAlarms = setData.IgnoreAlarms;
                     payload.Add(DeviceNetworkConstants.Command, AirAlarmSystem.AirAlarmSetDataStatus);
                     payload.Add(AirAlarmSystem.AirAlarmSetDataStatus, true);
 
@@ -171,23 +193,46 @@ namespace Content.Server.Atmos.Piping.Unary.EntitySystems
             if (!Resolve(uid, ref appearance, false))
                 return;
 
-            _ambientSoundSystem.SetAmbience(uid, true);
+            EntityManager.TryGetComponent<AmbientSoundComponent>(uid, out var ambience);
+
             if (!scrubber.Enabled)
             {
-                _ambientSoundSystem.SetAmbience(uid, false);
+                if (ambience.Enabled)
+                {
+                    ambience.Enabled = false;
+                    Dirty(ambience);
+                }
                 appearance.SetData(ScrubberVisuals.State, ScrubberState.Off);
             }
-            else if (scrubber.PumpDirection == ScrubberPumpDirection.Scrubbing)
+            else if (scrubber.ActualMode == ScrubberMode.Scrubbing)
             {
-                appearance.SetData(ScrubberVisuals.State, scrubber.WideNet ? ScrubberState.WideScrub : ScrubberState.Scrub);
+                if (!ambience.Enabled || !ambience.Volume.Equals(ScrubbingVolume))
+                {
+                    ambience.Enabled = true;
+                    ambience.Volume = ScrubbingVolume;
+                    ambience.Range = ScrubbingSoundRange;
+                    Dirty(ambience);
+                }
+                appearance.SetData(ScrubberVisuals.State, ScrubberState.Scrub);
             }
-            else if (scrubber.PumpDirection == ScrubberPumpDirection.Siphoning)
+            else if (scrubber.ActualMode == ScrubberMode.Siphoning)
             {
+                if (!ambience.Enabled || !ambience.Volume.Equals(SiphoningVolume))
+                {
+                    ambience.Enabled = true;
+                    ambience.Volume = SiphoningVolume;
+                    ambience.Range = SiphoningSoundRange;
+                    Dirty(ambience);
+                }
                 appearance.SetData(ScrubberVisuals.State, ScrubberState.Siphon);
             }
             else if (scrubber.Welded)
             {
-                _ambientSoundSystem.SetAmbience(uid, false);
+                if (ambience.Enabled)
+                {
+                    ambience.Enabled = false;
+                    Dirty(ambience);
+                }
                 appearance.SetData(ScrubberVisuals.State, ScrubberState.Welded);
             }
         }
