@@ -93,9 +93,9 @@ namespace Content.Server.Atmos.Piping.Unary.EntitySystems
             // TODO make this make a loud CHUNK noise as the vent snaps open
             if (tile.Pressure >= (scrubber.TargetPressure * 1.1f))
             {
-                if (scrubber.ActualMode != ScrubberMode.Siphoning)
+                if (scrubber.ActualMode != VentOrScrubberMode.High)
                 {
-                    scrubber.ActualMode = ScrubberMode.Siphoning;
+                    scrubber.ActualMode = VentOrScrubberMode.High;
                     needsUpdate = true;
                 }
             }
@@ -114,7 +114,7 @@ namespace Content.Server.Atmos.Piping.Unary.EntitySystems
                 return needsUpdate;
             }
 
-            float transferRate = scrubber.ActualMode == ScrubberMode.Siphoning
+            float transferRate = scrubber.ActualMode == VentOrScrubberMode.High
                 ? scrubber.MaxTransferRate
                 : scrubber.TransferRate;
 
@@ -134,12 +134,12 @@ namespace Content.Server.Atmos.Piping.Unary.EntitySystems
         {
             if (args.HighestNetworkType == AtmosMonitorAlarmType.Danger)
             {
-                component.TargetMode = ScrubberMode.Siphoning;
+                component.TargetMode = VentOrScrubberMode.High;
                 component.Enabled = true;
             }
             else if (args.HighestNetworkType == AtmosMonitorAlarmType.Normal)
             {
-                component.TargetMode = ScrubberMode.Scrubbing;
+                component.TargetMode = VentOrScrubberMode.Low;
                 component.Enabled = true;
             }
 
@@ -170,7 +170,7 @@ namespace Content.Server.Atmos.Piping.Unary.EntitySystems
 
                     return;
                 case AirAlarmSystem.AirAlarmSetData:
-                    if (!args.Data.TryGetValue(AirAlarmSystem.AirAlarmSetData, out GasVentScrubberData? setData))
+                    if (!args.Data.TryGetValue(AirAlarmSystem.AirAlarmSetData, out VentOrScrubberData? setData))
                         break;
 
                     component.FromAirAlarmData(setData.Value);
@@ -204,7 +204,7 @@ namespace Content.Server.Atmos.Piping.Unary.EntitySystems
                 }
                 appearance.SetData(ScrubberVisuals.State, ScrubberState.Off);
             }
-            else if (scrubber.ActualMode == ScrubberMode.Scrubbing)
+            else if (scrubber.ActualMode == VentOrScrubberMode.Low)
             {
                 if (!ambience.Enabled || !ambience.Volume.Equals(ScrubbingVolume))
                 {
@@ -215,7 +215,7 @@ namespace Content.Server.Atmos.Piping.Unary.EntitySystems
                 }
                 appearance.SetData(ScrubberVisuals.State, ScrubberState.Scrub);
             }
-            else if (scrubber.ActualMode == ScrubberMode.Siphoning)
+            else if (scrubber.ActualMode == VentOrScrubberMode.High)
             {
                 if (!ambience.Enabled || !ambience.Volume.Equals(SiphoningVolume))
                 {

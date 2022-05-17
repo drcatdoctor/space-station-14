@@ -10,7 +10,7 @@ namespace Content.Client.Atmos.Monitor.UI.Widgets
     [GenerateTypedNameReferences]
     public sealed partial class ScrubberControl : BoxContainer
     {
-        public GasVentScrubberData Data { get => _data;
+        public VentOrScrubberData Data { get => _data;
             set
             {
                 _data = value;
@@ -18,7 +18,7 @@ namespace Content.Client.Atmos.Monitor.UI.Widgets
             }
         }
 
-        private GasVentScrubberData _data;
+        private VentOrScrubberData _data;
 
         private string _address;
 
@@ -30,7 +30,7 @@ namespace Content.Client.Atmos.Monitor.UI.Widgets
         private FloatSpinBox _transferRate => CTransferRate;
         private FloatSpinBox _targetPressure => CTargetPressure;
 
-        public ScrubberControl(GasVentScrubberData data, string address)
+        public ScrubberControl(VentOrScrubberData data, string address)
         {
             RobustXamlLoader.Load(this);
 
@@ -61,13 +61,13 @@ namespace Content.Client.Atmos.Monitor.UI.Widgets
             };
             _targetPressure.IsValid += value => value >= 0;
 
-            foreach (var value in Enum.GetValues<ScrubberMode>())
+            foreach (var value in Enum.GetValues<VentOrScrubberMode>())
                 _scrubberMode.AddItem(Loc.GetString($"{value}"), (int) value);
 
             _scrubberMode.OnItemSelected += args =>
             {
                 _scrubberMode.SelectId(args.Id);
-                _data.Mode = (ScrubberMode) args.Id;
+                _data.Mode = (VentOrScrubberMode) args.Id;
                 ScrubberDataChanged?.Invoke(_address, _data);
             };
 

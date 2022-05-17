@@ -15,44 +15,6 @@ namespace Content.Server.Atmos.Piping.Unary.Components
         [ViewVariables(VVAccess.ReadWrite)]
         public bool Welded { get; set; } = false;
 
-        [ViewVariables(VVAccess.ReadWrite)]
-        [DataField("inlet")]
-        public string InletName { get; set; } = "pipe";
-
-        [ViewVariables(VVAccess.ReadWrite)]
-        [DataField("pumpDirection")]
-        public VentPumpDirection PumpDirection { get; set; } = VentPumpDirection.Releasing;
-
-        [ViewVariables(VVAccess.ReadWrite)]
-        [DataField("pressureChecks")]
-        public VentPressureBound PressureChecks { get; set; } = VentPressureBound.ExternalBound;
-
-        [ViewVariables(VVAccess.ReadWrite)]
-        [DataField("externalPressureBound")]
-        public float ExternalPressureBound
-        {
-            get => _externalPressureBound;
-            set
-            {
-                _externalPressureBound = Math.Clamp(value, 0, MaxPressure);
-            }
-        }
-
-        private float _externalPressureBound = Atmospherics.OneAtmosphere;
-
-        [ViewVariables(VVAccess.ReadWrite)]
-        [DataField("internalPressureBound")]
-        public float InternalPressureBound
-        {
-            get => _internalPressureBound;
-            set
-            {
-                _internalPressureBound = Math.Clamp(value, 0, MaxPressure);
-            }
-        }
-
-        private float _internalPressureBound = 0;
-
         /// <summary>
         ///     Max pressure of the target gas (NOT relative to source).
         /// </summary>
@@ -72,9 +34,9 @@ namespace Content.Server.Atmos.Piping.Unary.Components
         [DataField("targetPressureChange")]
         public float TargetPressureChange = Atmospherics.OneAtmosphere;
 
-        public GasVentPumpData ToAirAlarmData()
+        public VentOrScrubberData ToAirAlarmData()
         {
-            return new GasVentPumpData
+            return new VentOrScrubberData
             {
                 Enabled = Enabled,
                 Dirty = IsDirty,
@@ -85,7 +47,7 @@ namespace Content.Server.Atmos.Piping.Unary.Components
             };
         }
 
-        public void FromAirAlarmData(GasVentPumpData data)
+        public void FromAirAlarmData(VentOrScrubberData data)
         {
             Enabled = data.Enabled;
             IsDirty = data.Dirty;

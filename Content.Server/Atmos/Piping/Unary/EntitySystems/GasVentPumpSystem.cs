@@ -176,7 +176,7 @@ namespace Content.Server.Atmos.Piping.Unary.EntitySystems
 
                     return;
                 case AirAlarmSystem.AirAlarmSetData:
-                    if (!args.Data.TryGetValue(AirAlarmSystem.AirAlarmSetData, out GasVentPumpData? setData))
+                    if (!args.Data.TryGetValue(AirAlarmSystem.AirAlarmSetData, out VentOrScrubberData? setData))
                         break;
 
                     component.FromAirAlarmData(setData);

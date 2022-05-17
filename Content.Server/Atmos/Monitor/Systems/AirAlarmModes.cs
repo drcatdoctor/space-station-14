@@ -118,10 +118,10 @@ namespace Content.Server.Atmos.Monitor
             {
                 switch (device)
                 {
-                    case GasVentPumpData pumpData:
-                        AirAlarmSystem.SetData(uid, addr, GasVentPumpData.FilterModePreset);
+                    case VentOrScrubberData pumpData:
+                        AirAlarmSystem.SetData(uid, addr, VentOrScrubberData.FilterModePreset);
                         break;
-                    case GasVentScrubberData scrubberData:
+                    case VentOrScrubberData scrubberData:
                         AirAlarmSystem.SetData(uid, addr, GasVentScrubberComponent.ScrubbingModePreset);
                         break;
                 }
@@ -140,10 +140,10 @@ namespace Content.Server.Atmos.Monitor
             {
                 switch (device)
                 {
-                    case GasVentPumpData pumpData:
-                        AirAlarmSystem.SetData(uid, addr, GasVentPumpData.PanicModePreset);
+                    case VentOrScrubberData pumpData:
+                        AirAlarmSystem.SetData(uid, addr, VentOrScrubberData.PanicModePreset);
                         break;
-                    case GasVentScrubberData scrubberData:
+                    case VentOrScrubberData scrubberData:
                         AirAlarmSystem.SetData(uid, addr, GasVentScrubberComponent.SiphonModePreset);
                         break;
                 }
@@ -162,10 +162,10 @@ namespace Content.Server.Atmos.Monitor
             {
                 switch (device)
                 {
-                    case GasVentPumpData pumpData:
-                        AirAlarmSystem.SetData(uid, addr, GasVentPumpData.FillModePreset);
+                    case VentOrScrubberData pumpData:
+                        AirAlarmSystem.SetData(uid, addr, VentOrScrubberData.FillModePreset);
                         break;
-                    case GasVentScrubberData scrubberData:
+                    case VentOrScrubberData scrubberData:
                         AirAlarmSystem.SetData(uid, addr, GasVentScrubberComponent.ScrubbingModePreset);
                         break;
                 }
@@ -220,12 +220,12 @@ namespace Content.Server.Atmos.Monitor
             {
                 switch (device)
                 {
-                    case GasVentPumpData pumpData:
-                        pumpData = GasVentPumpData.PanicModePreset;
+                    case VentOrScrubberData pumpData:
+                        pumpData = VentOrScrubberData.PanicModePreset;
                         pumpData.IgnoreAlarms = true;
                         AirAlarmSystem.SetData(uid, addr, pumpData);
                         break;
-                    case GasVentScrubberData scrubberData:
+                    case VentOrScrubberData scrubberData:
                         scrubberData = GasVentScrubberComponent.SiphonModePreset;
                         scrubberData.IgnoreAlarms = true;
                         AirAlarmSystem.SetData(uid, addr, scrubberData);
